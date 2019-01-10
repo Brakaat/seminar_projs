@@ -14,24 +14,20 @@ res = requests.post(url, form_data)
 res.encoding = "utf-8"
 html = res.text
 bs = BeautifulSoup(html, "html.parser")
-all_infos = bs.find_all("td", {"style":"font-size: 12 pt"}) 
-all_times = bs.find_all("td", {"style":"font-size: 12pt"}) 
-all_links = bs.find("div").find_all("a") 
 
-re_infos = [] 
-re_times = [] 
-re_links = [] 
-fees = []
+infos = bs.select("div[align] td[style]")
+info = []
+# 五個一組
+for i in infos:
+    info.append(i)
+step = 6
+info = [info[n:n+step] for n in range(0,len(info),step)]
 
-for info in all_infos:
-    re_infos.append(info.text)
-
-for time in all_times:
-    re_times.append(time.text)
-
-titls = re_infos[1::5]
-addrs = re_infos[3::5]
-dates = re_times
+links = bs.find("div").find_all("a") 
+url = []
+for link in links:
+    if link["href"].startswith("http"):
+        url.append(link["href"])
 
 def ewda(url):
     res = requests.get(url)
@@ -39,13 +35,13 @@ def ewda(url):
     html = res.text
     bs = BeautifulSoup(html, "html.parser")
 
-    fee_content = bs.select(".boxcontent td")
-    fee_info = []
-    for fee in fee_content:
-        fee_info.append(fee.text)
+    top_content = bs.select(".boxcontent td")
+    info = []
+    for top in top_content:
+        info.append(top.text)
     tip_fee = "【活動費用】"
-    fee = fee_info.index(tip_fee)
-    fees.append(fee_info[fee+1])
+    fee = info.index(tip_fee)
+    print("費用："+info[fee+1])
 
     contents = bs.select(".boxcontent")
     content = []
@@ -58,7 +54,8 @@ def ewda(url):
     content_string = ''.join(content)
     str_start = content_string.index("【課程講師】")
     str_end = str_start + 9 #向後位移9個字元
-    re_links.append(content_string[str_start:str_end])
+    name = content_string[str_start+len("【課程講師】"):str_end]
+    print("講師："+name)
 def iiiedu(url):
     res = requests.get(url)
     res.encoding = "big5"
@@ -72,7 +69,7 @@ def iiiedu(url):
     re_infos.sort(key=infos.index)
     infos_string = "".join(re_infos)
     price = re.search(r"(NT\$\d+,\d+)", infos_string).group()
-    fees.append(price+"元")
+    print("費用："+price+"元")
 def clptc(url):
     res = requests.get(url)
     res.encoding = "utf-8"
@@ -92,38 +89,42 @@ def clptc(url):
         fee_start = infos_string.index("報名費用：")
         fee_end = infos_string.index("/人")
         fee = infos_string[fee_start+len("報名費用："):fee_end+len("/人")]
-        fees.append(fee)
+        print("費用："+fee)
 
         ta_start = infos_string.index("講師介紹：姓名：")
         ta_end = ta_start+len("講師介紹：姓名：")+3
         ta = infos_string[ta_start+len("講師介紹：姓名："):ta_end]
-        re_links.append("【課程講師】"+ta)
+        print("課程講師："+ta)
     else:
         
-        fees.append("報名截止")
-        re_links.append("報名截止")
+        print("報名截止")
 
-for link in all_links:
-    if link["href"].startswith("http://ewda.tw/"):
-        ewda(link["href"])
+count = 0
+for i in info:
+    name = i[0].text
+    if name == "ewdaewda":
+        print("名稱："+i[1].text
+            +"\n主辦單位："+i[2].text
+            +"\n時間："+i[3].text[0:10]+" "+i[3].text[10:15]
+            +"\n地址："+i[4].text
+            +"\n連結："+url[count])
+        ewda(url[count])
+        print("---------------------------------")
 
-    elif link["href"].startswith("http://www.iiiedu"):
-        iiiedu(link["href"])
-        re_links.append(link["href"])
-
-    elif link["href"].startswith("https://www.clptc"):
-        clptc(link["href"])
-
-    elif link["href"].startswith("http"):
-        re_links.append(link["href"])
-        fees.append("check information")
-
-    else:
-        pass
-
-for n in range(len(dates)):
-    print("名稱：", titls[n], 
-          "\n時間：", dates[n][0:10]+" "+dates[n][10:15],
-          "\n地址：", addrs[n],
-          "\n資訊：", re_links[n],
-          "\n費用：", fees[n], "\n")
+    elif name == "iiiedu":
+        print("名稱："+i[1].text
+            +"\n主辦單位："+i[2].text
+            +"\n時間："+i[3].text[0:10]+" "+i[3].text[10:15]
+            +"\n地址："+i[4].text
+            +"\n連結："+url[count])
+        iiiedu(url[count])
+        print("---------------------------------")
+    elif name == "tiensir":
+        print("名稱："+i[1].text
+            +"\n主辦單位："+i[2].text
+            +"\n時間："+i[3].text[0:10]+" "+i[3].text[10:15]
+            +"\n地址："+i[4].text
+            +"\n連結："+url[count])
+        clptc(url[count])
+        print("---------------------------------")
+    count += 1
